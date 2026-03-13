@@ -37,11 +37,59 @@ var result = await Retry.ExecuteAsync(async ct =>
     InitialDelay = TimeSpan.FromMilliseconds(500),
     MaxDelay = TimeSpan.FromSeconds(10),
     Jitter = true,
-    OnRetry = (ex, attempt) => Console.WriteLine($"Retry {attempt}: {ex.Message}"),
+    OnRetry = (ex, attempt, delay) => Console.WriteLine($"Retry {attempt}: {ex.Message} (next in {delay.TotalMilliseconds}ms)"),
 });
 
 // Use presets
 var data = await Retry.ExecuteAsync(ct => FetchData(ct), Presets.Aggressive);
+```
+
+### Fallback
+
+Return a default value instead of throwing when all retries are exhausted:
+
+```csharp
+// Async fallback — returns "default" if all attempts fail
+var result = await Retry.ExecuteWithFallbackAsync(
+    async ct => await FetchData(ct),
+    fallbackValue: "default",
+    new RetryOptions { MaxAttempts = 3 }
+);
+
+// Synchronous fallback
+var value = Retry.ExecuteWithFallback(
+    () => LoadConfig(),
+    fallbackValue: new Config { UseDefaults = true }
+);
+```
+
+### Per-Attempt Timeout
+
+Each attempt gets its own timeout. If an attempt times out, it counts as a failure and triggers retry:
+
+```csharp
+var result = await Retry.ExecuteWithTimeoutAsync(
+    async ct =>
+    {
+        var response = await httpClient.GetAsync("/api/data", ct);
+        return await response.Content.ReadAsStringAsync(ct);
+    },
+    timeout: TimeSpan.FromSeconds(5),
+    new RetryOptions { MaxAttempts = 3 }
+);
+```
+
+### Enhanced OnRetry Callback
+
+The `OnRetry` callback receives the exception, attempt number, and the computed delay before the next attempt:
+
+```csharp
+var options = new RetryOptions
+{
+    MaxAttempts = 5,
+    OnRetry = (ex, attempt, delay) =>
+        Console.WriteLine($"Attempt {attempt} failed: {ex.Message}. Retrying in {delay.TotalMilliseconds}ms..."),
+};
 ```
 
 ### Circuit Breaker

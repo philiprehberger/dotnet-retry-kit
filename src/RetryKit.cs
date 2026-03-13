@@ -10,7 +10,7 @@ public class RetryOptions
     public TimeSpan MaxDelay { get; set; } = TimeSpan.FromSeconds(30);
     public bool Jitter { get; set; } = true;
     public Func<Exception, bool>? RetryOn { get; set; }
-    public Action<Exception, int>? OnRetry { get; set; }
+    public Action<Exception, int, TimeSpan>? OnRetry { get; set; }
     public Action<int>? OnSuccess { get; set; }
     public Action<Exception, int>? OnFailure { get; set; }
 }
@@ -55,8 +55,8 @@ public static class Retry
 
                 if (attempt < opts.MaxAttempts)
                 {
-                    opts.OnRetry?.Invoke(ex, attempt);
                     var delay = CalculateDelay(attempt, opts);
+                    opts.OnRetry?.Invoke(ex, attempt, delay);
                     await Task.Delay(delay, ct);
                 }
             }
@@ -86,14 +86,139 @@ public static class Retry
 
                 if (attempt < opts.MaxAttempts)
                 {
-                    opts.OnRetry?.Invoke(ex, attempt);
                     var delay = CalculateDelay(attempt, opts);
+                    opts.OnRetry?.Invoke(ex, attempt, delay);
                     Thread.Sleep(delay);
                 }
             }
         }
 
         opts.OnFailure?.Invoke(lastError!, opts.MaxAttempts);
+        throw new RetryError(opts.MaxAttempts, lastError!);
+    }
+
+    public static async Task<T> ExecuteWithFallbackAsync<T>(
+        Func<CancellationToken, Task<T>> fn,
+        T fallbackValue,
+        RetryOptions? options = null,
+        CancellationToken ct = default)
+    {
+        var opts = options ?? new RetryOptions();
+        Exception? lastError = null;
+
+        for (int attempt = 1; attempt <= opts.MaxAttempts; attempt++)
+        {
+            try
+            {
+                var result = await fn(ct);
+                opts.OnSuccess?.Invoke(attempt);
+                return result;
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                lastError = ex;
+                if (opts.RetryOn != null && !opts.RetryOn(ex)) throw;
+
+                if (attempt < opts.MaxAttempts)
+                {
+                    var delay = CalculateDelay(attempt, opts);
+                    opts.OnRetry?.Invoke(ex, attempt, delay);
+                    await Task.Delay(delay, ct);
+                }
+            }
+        }
+
+        opts.OnFailure?.Invoke(lastError!, opts.MaxAttempts);
+        return fallbackValue;
+    }
+
+    public static T ExecuteWithFallback<T>(
+        Func<T> fn,
+        T fallbackValue,
+        RetryOptions? options = null)
+    {
+        var opts = options ?? new RetryOptions();
+        Exception? lastError = null;
+
+        for (int attempt = 1; attempt <= opts.MaxAttempts; attempt++)
+        {
+            try
+            {
+                var result = fn();
+                opts.OnSuccess?.Invoke(attempt);
+                return result;
+            }
+            catch (Exception ex)
+            {
+                lastError = ex;
+                if (opts.RetryOn != null && !opts.RetryOn(ex)) throw;
+
+                if (attempt < opts.MaxAttempts)
+                {
+                    var delay = CalculateDelay(attempt, opts);
+                    opts.OnRetry?.Invoke(ex, attempt, delay);
+                    Thread.Sleep(delay);
+                }
+            }
+        }
+
+        opts.OnFailure?.Invoke(lastError!, opts.MaxAttempts);
+        return fallbackValue;
+    }
+
+    public static async Task<T> ExecuteWithTimeoutAsync<T>(
+        Func<CancellationToken, Task<T>> fn,
+        TimeSpan timeout,
+        RetryOptions? options = null,
+        CancellationToken ct = default)
+    {
+        var opts = options ?? new RetryOptions();
+        Exception? lastError = null;
+
+        for (int attempt = 1; attempt <= opts.MaxAttempts; attempt++)
+        {
+            using var timeoutCts = new CancellationTokenSource(timeout);
+            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token);
+
+            try
+            {
+                var result = await fn(linkedCts.Token);
+                opts.OnSuccess?.Invoke(attempt);
+                return result;
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (OperationCanceledException ex) when (timeoutCts.IsCancellationRequested)
+            {
+                lastError = new TimeoutException($"Attempt {attempt} timed out after {timeout.TotalMilliseconds}ms", ex);
+                if (opts.RetryOn != null && !opts.RetryOn(lastError)) throw lastError;
+
+                if (attempt < opts.MaxAttempts)
+                {
+                    var delay = CalculateDelay(attempt, opts);
+                    opts.OnRetry?.Invoke(lastError, attempt, delay);
+                    await Task.Delay(delay, ct);
+                }
+            }
+            catch (Exception ex)
+            {
+                lastError = ex;
+                if (opts.RetryOn != null && !opts.RetryOn(ex)) throw;
+
+                if (attempt < opts.MaxAttempts)
+                {
+                    var delay = CalculateDelay(attempt, opts);
+                    opts.OnRetry?.Invoke(ex, attempt, delay);
+                    await Task.Delay(delay, ct);
+                }
+            }
+        }
+
+        opts.OnFailure?.Invoke(lastError!, opts.MaxAttempts);
+        if (lastError is TimeoutException)
+            throw lastError;
         throw new RetryError(opts.MaxAttempts, lastError!);
     }
 
