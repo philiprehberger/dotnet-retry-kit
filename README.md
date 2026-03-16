@@ -121,6 +121,12 @@ var data = await breaker.CallAsync(async () => await FetchData());
 | `NetworkRequest` | 3 | Exponential | 1s | 10s |
 | `DatabaseQuery` | 3 | Linear | 500ms | 5s |
 
+## Development
+
+```bash
+dotnet build src/Philiprehberger.RetryKit.csproj --configuration Release
+```
+
 ## License
 
 MIT
