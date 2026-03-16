@@ -1,5 +1,9 @@
 # Philiprehberger.RetryKit
 
+[![CI](https://github.com/philiprehberger/dotnet-retry-kit/actions/workflows/ci.yml/badge.svg)](https://github.com/philiprehberger/dotnet-retry-kit/actions/workflows/ci.yml)
+[![NuGet](https://img.shields.io/nuget/v/Philiprehberger.RetryKit.svg)](https://www.nuget.org/packages/Philiprehberger.RetryKit)
+[![License](https://img.shields.io/github/license/philiprehberger/dotnet-retry-kit)](LICENSE)
+
 Configurable retry logic and circuit breaker for .NET — exponential backoff, jitter, and built-in presets.
 
 ## Install
