@@ -2,6 +2,19 @@ namespace Philiprehberger.RetryKit;
 
 public enum CircuitState { Closed, Open, HalfOpen }
 
+/// <summary>
+/// Snapshot of circuit breaker metrics at a point in time.
+/// </summary>
+/// <param name="TotalAttempts">Total number of calls made through the circuit breaker.</param>
+/// <param name="FailureCount">Number of failed calls.</param>
+/// <param name="SuccessCount">Number of successful calls.</param>
+/// <param name="State">Current state of the circuit breaker.</param>
+public record CircuitBreakerMetrics(
+    int TotalAttempts,
+    int FailureCount,
+    int SuccessCount,
+    CircuitState State);
+
 public class CircuitOpenException : Exception
 {
     public CircuitOpenException() : base("Circuit breaker is open — request rejected") { }
@@ -18,6 +31,8 @@ public class CircuitBreaker
 
     private CircuitState _state = CircuitState.Closed;
     private int _failures;
+    private int _successes;
+    private int _totalAttempts;
     private DateTime _lastFailureTime;
     private int _halfOpenAttempts;
 
@@ -40,6 +55,23 @@ public class CircuitBreaker
         get { lock (_lock) return _state; }
     }
 
+    /// <summary>
+    /// Returns current circuit breaker metrics including total attempts, failure count,
+    /// success count, and current state.
+    /// </summary>
+    /// <returns>A snapshot of the current circuit breaker metrics.</returns>
+    public CircuitBreakerMetrics GetMetrics()
+    {
+        lock (_lock)
+        {
+            return new CircuitBreakerMetrics(
+                TotalAttempts: _totalAttempts,
+                FailureCount: _failures,
+                SuccessCount: _successes,
+                State: _state);
+        }
+    }
+
     private void Transition(CircuitState to)
     {
         if (_state != to)
@@ -54,6 +86,8 @@ public class CircuitBreaker
     {
         lock (_lock)
         {
+            _totalAttempts++;
+
             if (_state == CircuitState.Open)
             {
                 if (DateTime.UtcNow - _lastFailureTime >= _resetTimeout)
@@ -76,6 +110,7 @@ public class CircuitBreaker
             var result = fn();
             lock (_lock)
             {
+                _successes++;
                 if (_state == CircuitState.HalfOpen)
                     Transition(CircuitState.Closed);
                 _failures = 0;
@@ -103,6 +138,8 @@ public class CircuitBreaker
     {
         lock (_lock)
         {
+            _totalAttempts++;
+
             if (_state == CircuitState.Open)
             {
                 if (DateTime.UtcNow - _lastFailureTime >= _resetTimeout)
@@ -125,6 +162,7 @@ public class CircuitBreaker
             var result = await fn();
             lock (_lock)
             {
+                _successes++;
                 if (_state == CircuitState.HalfOpen)
                     Transition(CircuitState.Closed);
                 _failures = 0;

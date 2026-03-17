@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.0
+
+- Add `ExecuteIfAsync` and `ExecuteIf` for conditional retry based on exception type
+- Add `CircuitBreaker.GetMetrics()` for observability
+
 ## 0.2.3
 
 - Add Development section to README

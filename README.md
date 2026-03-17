@@ -67,6 +67,30 @@ var value = Retry.ExecuteWithFallback(
 );
 ```
 
+### Conditional Retry
+
+Only retry specific exception types — non-matching exceptions are thrown immediately:
+
+```csharp
+// Only retry transient HTTP errors, fail fast on 4xx client errors
+var result = await Retry.ExecuteIfAsync(
+    async ct =>
+    {
+        var response = await httpClient.GetAsync("/api/data", ct);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadAsStringAsync(ct);
+    },
+    shouldRetry: ex => ex is HttpRequestException { StatusCode: >= System.Net.HttpStatusCode.InternalServerError },
+    new RetryOptions { MaxAttempts = 3 }
+);
+
+// Synchronous version
+var value = Retry.ExecuteIf(
+    () => LoadFromDatabase(),
+    shouldRetry: ex => ex is TimeoutException or IOException
+);
+```
+
 ### Per-Attempt Timeout
 
 Each attempt gets its own timeout. If an attempt times out, it counts as a failure and triggers retry:
@@ -110,6 +134,10 @@ var result = breaker.Call(() => SomeOperation());
 
 // Async
 var data = await breaker.CallAsync(async () => await FetchData());
+
+// Check metrics
+var metrics = breaker.GetMetrics();
+Console.WriteLine($"State: {metrics.State}, Successes: {metrics.SuccessCount}, Failures: {metrics.FailureCount}");
 ```
 
 ## Presets

@@ -222,6 +222,102 @@ public static class Retry
         throw new RetryError(opts.MaxAttempts, lastError!);
     }
 
+    /// <summary>
+    /// Executes with retry, but only retries when the exception matches the predicate.
+    /// Non-matching exceptions are thrown immediately.
+    /// </summary>
+    /// <typeparam name="T">The return type of the operation.</typeparam>
+    /// <param name="operation">The async operation to execute.</param>
+    /// <param name="shouldRetry">Predicate that determines whether the exception is retryable.</param>
+    /// <param name="options">Optional retry configuration.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The result of the operation.</returns>
+    public static async Task<T> ExecuteIfAsync<T>(
+        Func<CancellationToken, Task<T>> operation,
+        Func<Exception, bool> shouldRetry,
+        RetryOptions? options = null,
+        CancellationToken cancellationToken = default)
+    {
+        var opts = options ?? new RetryOptions();
+        Exception? lastError = null;
+
+        for (int attempt = 1; attempt <= opts.MaxAttempts; attempt++)
+        {
+            try
+            {
+                var result = await operation(cancellationToken);
+                opts.OnSuccess?.Invoke(attempt);
+                return result;
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                lastError = ex;
+
+                if (!shouldRetry(ex))
+                    throw;
+
+                if (attempt < opts.MaxAttempts)
+                {
+                    var delay = CalculateDelay(attempt, opts);
+                    opts.OnRetry?.Invoke(ex, attempt, delay);
+                    await Task.Delay(delay, cancellationToken);
+                }
+            }
+        }
+
+        opts.OnFailure?.Invoke(lastError!, opts.MaxAttempts);
+        throw new RetryError(opts.MaxAttempts, lastError!);
+    }
+
+    /// <summary>
+    /// Executes with retry, but only retries when the exception matches the predicate.
+    /// Non-matching exceptions are thrown immediately.
+    /// </summary>
+    /// <typeparam name="T">The return type of the operation.</typeparam>
+    /// <param name="operation">The synchronous operation to execute.</param>
+    /// <param name="shouldRetry">Predicate that determines whether the exception is retryable.</param>
+    /// <param name="options">Optional retry configuration.</param>
+    /// <returns>The result of the operation.</returns>
+    public static T ExecuteIf<T>(
+        Func<T> operation,
+        Func<Exception, bool> shouldRetry,
+        RetryOptions? options = null)
+    {
+        var opts = options ?? new RetryOptions();
+        Exception? lastError = null;
+
+        for (int attempt = 1; attempt <= opts.MaxAttempts; attempt++)
+        {
+            try
+            {
+                var result = operation();
+                opts.OnSuccess?.Invoke(attempt);
+                return result;
+            }
+            catch (Exception ex)
+            {
+                lastError = ex;
+
+                if (!shouldRetry(ex))
+                    throw;
+
+                if (attempt < opts.MaxAttempts)
+                {
+                    var delay = CalculateDelay(attempt, opts);
+                    opts.OnRetry?.Invoke(ex, attempt, delay);
+                    Thread.Sleep(delay);
+                }
+            }
+        }
+
+        opts.OnFailure?.Invoke(lastError!, opts.MaxAttempts);
+        throw new RetryError(opts.MaxAttempts, lastError!);
+    }
+
     private static TimeSpan CalculateDelay(int attempt, RetryOptions opts)
     {
         double delayMs = opts.Backoff switch
