@@ -1,25 +1,58 @@
 namespace Philiprehberger.RetryKit;
 
-public enum BackoffStrategy { Exponential, Linear, Fixed }
+/// <summary>
+/// Specifies the backoff strategy used between retry attempts.
+/// </summary>
+public enum BackoffStrategy
+{
+    /// <summary>Delay doubles with each attempt.</summary>
+    Exponential,
+    /// <summary>Delay increases linearly with each attempt.</summary>
+    Linear,
+    /// <summary>Delay remains constant between attempts.</summary>
+    Fixed
+}
 
+/// <summary>
+/// Configuration options for retry behavior.
+/// </summary>
 public class RetryOptions
 {
+    /// <summary>Maximum number of attempts before giving up. Default is 3.</summary>
     public int MaxAttempts { get; set; } = 3;
+    /// <summary>Backoff strategy between retries. Default is <see cref="BackoffStrategy.Exponential"/>.</summary>
     public BackoffStrategy Backoff { get; set; } = BackoffStrategy.Exponential;
+    /// <summary>Initial delay before the first retry. Default is 1 second.</summary>
     public TimeSpan InitialDelay { get; set; } = TimeSpan.FromSeconds(1);
+    /// <summary>Maximum delay cap between retries. Default is 30 seconds.</summary>
     public TimeSpan MaxDelay { get; set; } = TimeSpan.FromSeconds(30);
+    /// <summary>Whether to apply random jitter to delays. Default is true.</summary>
     public bool Jitter { get; set; } = true;
+    /// <summary>Optional predicate that determines whether an exception should be retried.</summary>
     public Func<Exception, bool>? RetryOn { get; set; }
+    /// <summary>Callback invoked before each retry with the exception, attempt number, and delay.</summary>
     public Action<Exception, int, TimeSpan>? OnRetry { get; set; }
+    /// <summary>Callback invoked on success with the attempt number.</summary>
     public Action<int>? OnSuccess { get; set; }
+    /// <summary>Callback invoked after all attempts fail with the last exception and attempt count.</summary>
     public Action<Exception, int>? OnFailure { get; set; }
 }
 
+/// <summary>
+/// Exception thrown when all retry attempts have been exhausted.
+/// </summary>
 public class RetryError : Exception
 {
+    /// <summary>Total number of attempts made before failure.</summary>
     public int Attempts { get; }
+    /// <summary>The exception from the last failed attempt.</summary>
     public Exception LastError { get; }
 
+    /// <summary>
+    /// Initializes a new <see cref="RetryError"/> with the attempt count and last exception.
+    /// </summary>
+    /// <param name="attempts">Number of attempts made.</param>
+    /// <param name="lastError">The exception from the final attempt.</param>
     public RetryError(int attempts, Exception lastError)
         : base($"All {attempts} attempts failed: {lastError.Message}", lastError)
     {
@@ -28,10 +61,21 @@ public class RetryError : Exception
     }
 }
 
+/// <summary>
+/// Provides static methods for executing operations with automatic retry logic.
+/// </summary>
 public static class Retry
 {
     private static readonly Random Rng = new();
 
+    /// <summary>
+    /// Executes an async operation with retry logic.
+    /// </summary>
+    /// <typeparam name="T">The return type of the operation.</typeparam>
+    /// <param name="fn">The async operation to execute.</param>
+    /// <param name="options">Optional retry configuration.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result of the operation.</returns>
     public static async Task<T> ExecuteAsync<T>(
         Func<CancellationToken, Task<T>> fn,
         RetryOptions? options = null,
@@ -66,6 +110,13 @@ public static class Retry
         throw new RetryError(opts.MaxAttempts, lastError!);
     }
 
+    /// <summary>
+    /// Executes a synchronous operation with retry logic.
+    /// </summary>
+    /// <typeparam name="T">The return type of the operation.</typeparam>
+    /// <param name="fn">The operation to execute.</param>
+    /// <param name="options">Optional retry configuration.</param>
+    /// <returns>The result of the operation.</returns>
     public static T Execute<T>(Func<T> fn, RetryOptions? options = null)
     {
         var opts = options ?? new RetryOptions();
@@ -97,6 +148,15 @@ public static class Retry
         throw new RetryError(opts.MaxAttempts, lastError!);
     }
 
+    /// <summary>
+    /// Executes an async operation with retry logic, returning a fallback value if all attempts fail.
+    /// </summary>
+    /// <typeparam name="T">The return type of the operation.</typeparam>
+    /// <param name="fn">The async operation to execute.</param>
+    /// <param name="fallbackValue">Value to return if all attempts fail.</param>
+    /// <param name="options">Optional retry configuration.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result of the operation or the fallback value.</returns>
     public static async Task<T> ExecuteWithFallbackAsync<T>(
         Func<CancellationToken, Task<T>> fn,
         T fallbackValue,
@@ -132,6 +192,14 @@ public static class Retry
         return fallbackValue;
     }
 
+    /// <summary>
+    /// Executes a synchronous operation with retry logic, returning a fallback value if all attempts fail.
+    /// </summary>
+    /// <typeparam name="T">The return type of the operation.</typeparam>
+    /// <param name="fn">The operation to execute.</param>
+    /// <param name="fallbackValue">Value to return if all attempts fail.</param>
+    /// <param name="options">Optional retry configuration.</param>
+    /// <returns>The result of the operation or the fallback value.</returns>
     public static T ExecuteWithFallback<T>(
         Func<T> fn,
         T fallbackValue,
@@ -166,6 +234,15 @@ public static class Retry
         return fallbackValue;
     }
 
+    /// <summary>
+    /// Executes an async operation with retry logic and a per-attempt timeout.
+    /// </summary>
+    /// <typeparam name="T">The return type of the operation.</typeparam>
+    /// <param name="fn">The async operation to execute.</param>
+    /// <param name="timeout">Maximum duration for each individual attempt.</param>
+    /// <param name="options">Optional retry configuration.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The result of the operation.</returns>
     public static async Task<T> ExecuteWithTimeoutAsync<T>(
         Func<CancellationToken, Task<T>> fn,
         TimeSpan timeout,
@@ -336,8 +413,12 @@ public static class Retry
     }
 }
 
+/// <summary>
+/// Provides pre-configured <see cref="RetryOptions"/> for common use cases.
+/// </summary>
 public static class Presets
 {
+    /// <summary>Aggressive retry: 5 attempts, 500ms initial delay, 5s max, exponential with jitter.</summary>
     public static RetryOptions Aggressive => new()
     {
         MaxAttempts = 5,
@@ -347,6 +428,7 @@ public static class Presets
         Jitter = true,
     };
 
+    /// <summary>Gentle retry: 3 attempts, 2s initial delay, 30s max, exponential with jitter.</summary>
     public static RetryOptions Gentle => new()
     {
         MaxAttempts = 3,
@@ -356,6 +438,7 @@ public static class Presets
         Jitter = true,
     };
 
+    /// <summary>Network request preset: 3 attempts, 1s initial delay, 10s max, exponential with jitter.</summary>
     public static RetryOptions NetworkRequest => new()
     {
         MaxAttempts = 3,
@@ -365,6 +448,7 @@ public static class Presets
         Jitter = true,
     };
 
+    /// <summary>Database query preset: 3 attempts, 500ms initial delay, 5s max, linear without jitter.</summary>
     public static RetryOptions DatabaseQuery => new()
     {
         MaxAttempts = 3,

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.1
+
+- Add API section to README
+- Add LangVersion and TreatWarningsAsErrors to csproj
+
 ## 0.3.0
 
 - Add `ExecuteIfAsync` and `ExecuteIf` for conditional retry based on exception type

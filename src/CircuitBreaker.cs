@@ -1,6 +1,17 @@
 namespace Philiprehberger.RetryKit;
 
-public enum CircuitState { Closed, Open, HalfOpen }
+/// <summary>
+/// Represents the state of a circuit breaker.
+/// </summary>
+public enum CircuitState
+{
+    /// <summary>Circuit is closed and requests flow normally.</summary>
+    Closed,
+    /// <summary>Circuit is open and requests are rejected.</summary>
+    Open,
+    /// <summary>Circuit is testing whether the downstream dependency has recovered.</summary>
+    HalfOpen
+}
 
 /// <summary>
 /// Snapshot of circuit breaker metrics at a point in time.
@@ -15,11 +26,20 @@ public record CircuitBreakerMetrics(
     int SuccessCount,
     CircuitState State);
 
+/// <summary>
+/// Exception thrown when a call is rejected because the circuit breaker is open.
+/// </summary>
 public class CircuitOpenException : Exception
 {
+    /// <summary>
+    /// Initializes a new instance of <see cref="CircuitOpenException"/>.
+    /// </summary>
     public CircuitOpenException() : base("Circuit breaker is open — request rejected") { }
 }
 
+/// <summary>
+/// Implements the circuit breaker pattern to prevent repeated calls to a failing dependency.
+/// </summary>
 public class CircuitBreaker
 {
     private readonly int _failureThreshold;
@@ -36,6 +56,14 @@ public class CircuitBreaker
     private DateTime _lastFailureTime;
     private int _halfOpenAttempts;
 
+    /// <summary>
+    /// Creates a new circuit breaker with the specified configuration.
+    /// </summary>
+    /// <param name="failureThreshold">Number of consecutive failures before opening the circuit.</param>
+    /// <param name="resetTimeoutSeconds">Seconds to wait before transitioning from open to half-open.</param>
+    /// <param name="halfOpenMaxAttempts">Maximum probe attempts allowed in the half-open state.</param>
+    /// <param name="onStateChange">Optional callback invoked on state transitions.</param>
+    /// <param name="onCircuitOpen">Optional callback invoked when the circuit opens, with the failure count.</param>
     public CircuitBreaker(
         int failureThreshold = 5,
         int resetTimeoutSeconds = 30,
@@ -50,6 +78,7 @@ public class CircuitBreaker
         _onCircuitOpen = onCircuitOpen;
     }
 
+    /// <summary>Gets the current state of the circuit breaker.</summary>
     public CircuitState State
     {
         get { lock (_lock) return _state; }
@@ -82,6 +111,13 @@ public class CircuitBreaker
         }
     }
 
+    /// <summary>
+    /// Executes a synchronous operation through the circuit breaker.
+    /// </summary>
+    /// <typeparam name="T">The return type of the operation.</typeparam>
+    /// <param name="fn">The operation to execute.</param>
+    /// <returns>The result of the operation.</returns>
+    /// <exception cref="CircuitOpenException">Thrown when the circuit is open and the call is rejected.</exception>
     public T Call<T>(Func<T> fn)
     {
         lock (_lock)
@@ -134,6 +170,13 @@ public class CircuitBreaker
         }
     }
 
+    /// <summary>
+    /// Executes an async operation through the circuit breaker.
+    /// </summary>
+    /// <typeparam name="T">The return type of the operation.</typeparam>
+    /// <param name="fn">The async operation to execute.</param>
+    /// <returns>The result of the operation.</returns>
+    /// <exception cref="CircuitOpenException">Thrown when the circuit is open and the call is rejected.</exception>
     public async Task<T> CallAsync<T>(Func<Task<T>> fn)
     {
         lock (_lock)

@@ -149,6 +149,38 @@ Console.WriteLine($"State: {metrics.State}, Successes: {metrics.SuccessCount}, F
 | `NetworkRequest` | 3 | Exponential | 1s | 10s |
 | `DatabaseQuery` | 3 | Linear | 500ms | 5s |
 
+## API
+
+### `Retry`
+
+| Method | Description |
+|--------|-------------|
+| `ExecuteAsync<T>(fn, options?)` | Retry an async operation with configurable backoff |
+| `Execute<T>(fn, options?)` | Retry a synchronous operation |
+| `ExecuteWithFallbackAsync<T>(fn, fallback, options?)` | Retry with async fallback on exhaustion |
+| `ExecuteWithFallback<T>(fn, fallback, options?)` | Retry with synchronous fallback |
+
+### `RetryOptions`
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `MaxAttempts` | `int` | `3` | Maximum retry attempts |
+| `Backoff` | `BackoffStrategy` | `Exponential` | Backoff strategy |
+| `InitialDelay` | `TimeSpan` | `1s` | Initial delay between retries |
+| `MaxDelay` | `TimeSpan` | `30s` | Maximum delay cap |
+| `Jitter` | `bool` | `true` | Add random jitter to delays |
+| `RetryOn` | `Func<Exception, bool>?` | `null` | Predicate to filter retryable exceptions |
+| `OnRetry` | `Action<Exception, int, TimeSpan>?` | `null` | Callback on each retry |
+
+### `CircuitBreaker`
+
+| Method | Description |
+|--------|-------------|
+| `Call<T>(fn)` | Execute through the circuit breaker |
+| `CallAsync<T>(fn)` | Execute async through the circuit breaker |
+| `GetMetrics()` | Get circuit breaker metrics |
+| `State` | Current circuit state (Closed, Open, HalfOpen) |
+
 ## Development
 
 ```bash
