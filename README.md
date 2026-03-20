@@ -6,7 +6,7 @@
 
 Configurable retry logic and circuit breaker for .NET — exponential backoff, jitter, and built-in presets.
 
-## Install
+## Installation
 
 ```bash
 dotnet add package Philiprehberger.RetryKit
@@ -140,7 +140,7 @@ var metrics = breaker.GetMetrics();
 Console.WriteLine($"State: {metrics.State}, Successes: {metrics.SuccessCount}, Failures: {metrics.FailureCount}");
 ```
 
-## Presets
+### Presets
 
 | Preset | Attempts | Backoff | Initial Delay | Max Delay |
 |--------|----------|---------|---------------|-----------|
