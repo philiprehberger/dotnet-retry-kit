@@ -7,9 +7,9 @@
     <LangVersion>latest</LangVersion>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <PackageId>Philiprehberger.RetryKit</PackageId>
-    <Version>0.3.2</Version>
+    <Version>0.3.3</Version>
     <Authors>Philip Rehberger</Authors>
-    <Description>Retry with exponential backoff and circuit breaker for .NET</Description>
+    <Description>Configurable retry logic and circuit breaker for .NET — exponential backoff, jitter, and built-in presets.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <RepositoryUrl>https://github.com/philiprehberger/dotnet-retry-kit</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
