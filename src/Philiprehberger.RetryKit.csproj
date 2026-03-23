@@ -7,7 +7,7 @@
     <LangVersion>latest</LangVersion>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <PackageId>Philiprehberger.RetryKit</PackageId>
-    <Version>0.3.1</Version>
+    <Version>0.3.2</Version>
     <Authors>Philip Rehberger</Authors>
     <Description>Retry with exponential backoff and circuit breaker for .NET</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
