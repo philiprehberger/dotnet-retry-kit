@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.4 (2026-03-26)
+
+- Add Sponsor badge to README
+- Fix License section format
+- Sync .csproj description with README
+
 ## 0.3.3 (2026-03-23)
 
 - Sync .csproj description with README

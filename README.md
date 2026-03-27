@@ -3,6 +3,7 @@
 [![CI](https://github.com/philiprehberger/dotnet-retry-kit/actions/workflows/ci.yml/badge.svg)](https://github.com/philiprehberger/dotnet-retry-kit/actions/workflows/ci.yml)
 [![NuGet](https://img.shields.io/nuget/v/Philiprehberger.RetryKit.svg)](https://www.nuget.org/packages/Philiprehberger.RetryKit)
 [![License](https://img.shields.io/github/license/philiprehberger/dotnet-retry-kit)](LICENSE)
+[![Sponsor](https://img.shields.io/badge/sponsor-GitHub%20Sponsors-ec6cb9)](https://github.com/sponsors/philiprehberger)
 
 Configurable retry logic and circuit breaker for .NET — exponential backoff, jitter, and built-in presets.
 
@@ -189,4 +190,4 @@ dotnet build src/Philiprehberger.RetryKit.csproj --configuration Release
 
 ## License
 
-MIT
+[MIT](LICENSE)
