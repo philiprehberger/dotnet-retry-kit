@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.5 (2026-03-31)
+
+- Standardize README to 3-badge format with emoji Support section
+- Update CI actions to v5 for Node.js 24 compatibility
+- Add GitHub issue templates, dependabot config, and PR template
+
 ## 0.3.4 (2026-03-26)
 
 - Add Sponsor badge to README
